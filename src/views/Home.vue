@@ -2,25 +2,31 @@
   <div class="home">
     <!-- <img alt="Vue logo" src="../assets/logo.png"> -->
        <el-container>
-            <el-aside width="250px">
-              <el-menu>
-                <el-menu-item-group>
+            <el-aside>
+              <el-menu @open="handleOpen" @close="handleClose" @select="handleSelect" default-active="1-1" :unique-opened="true">
+                <el-submenu index="1" collapse="isCollapse1">
+                  <template slot="title">
+                    <i class="el-icon-location"></i>
+                    <span>Map</span>
+                  </template>
+                  <!-- <el-menu-item-group> -->
                     <!-- <span slot="title">分组一</span> -->
                     <el-menu-item index="1-1">
-                      <div class="block">
-                        <span class="demonstration"></span>
+                        <!-- <span class="demonstration"></span> -->
                         <el-date-picker
-                          v-model="curdate"
+                          v-model="leftletMap.curdate"
                           type="date"
                           placeholder="选择日期"
-                          format="yyyy-MM-dd">
+                          format="yyyy-MM-dd"
+                          size="small"
+                          :editable="false"
+                          :clearable="false">
                         </el-date-picker>
-                      </div>
                     </el-menu-item>
                     <el-menu-item index="1-2">
                       <span style="color:black">Heatmap：  </span>
                       <el-switch
-                        v-model="showHeatmap"
+                        v-model="heatmap.show"
                         active-text="可见"
                         inactive-text="隐藏">
                       </el-switch>
@@ -30,26 +36,44 @@
                       <el-switch
                         v-model="play">
                       </el-switch> -->
-                      <el-radio v-model="radio" label="0">Way1</el-radio>
-                      <el-radio v-model="radio" label="1">Way2</el-radio>
+                      <el-radio v-model="leftletMap.visway" label="0" size="small" :border="true">Way 1</el-radio>
+                      <el-radio v-model="leftletMap.visway" label="1" size="small" :border="true">Way 2</el-radio>
                     </el-menu-item>
                     <el-menu-item index="1-4">
-                      <el-button type="primary" size="small" plain @click="play=!play">{{play===true?'Pause':'Play'}}</el-button>
-                      <el-button type="primary" size="small" plain @click="replay=!replay;play=true;">Replay</el-button>
+                      <el-button type="primary" size="small" plain @click="leftletMap.play=!leftletMap.play">{{leftletMap.play===true?'Pause':'Play'}}</el-button>
+                      <el-button type="primary" size="small" plain @click="leftletMap.replay=!leftletMap.replay;leftletMap.play=true;">Replay</el-button>
                     </el-menu-item>
-                  </el-menu-item-group>
+                  <!-- </el-menu-item-group> -->
+                </el-submenu>
+                <el-menu-item index="2">
+                  <i class="el-icon-menu"></i>
+                  <span slot="title">TagCloud</span>
+                </el-menu-item>
+                <el-submenu index="3">
+                  <template slot="title">
+                    <i class="el-icon-location"></i>
+                    <span>xxx</span>
+                  </template>
                   <el-menu-item-group title="分组2">
-                    <el-menu-item index="1-3">选项3</el-menu-item>
+                    <el-menu-item index="2-1">选项3</el-menu-item>
                   </el-menu-item-group>
-                  <el-submenu index="1-4">
+                  <el-submenu index="2-2">
                     <span slot="title">选项4</span>
-                    <el-menu-item index="1-4-1">选项1</el-menu-item>
+                    <el-menu-item index="2-2-1">选项1</el-menu-item>
                   </el-submenu>
+                </el-submenu>
               </el-menu>
             </el-aside>
-            <el-main>
-              <LeafletMap :dataset="geogWithDateData" :datasetWithTime="geogWithTimeData" :isplay="play" :replay="replay" :visway="radio" v-if="flag"></LeafletMap>
-              <Heatmap :dataset="timeCountData" v-if="flag" v-show="showHeatmap"></Heatmap>
+            <el-main v-if="module === '1'">
+              <div class="main-content">
+                <LeafletMap :defaultData="leftletMap.geogWithDateData" :datasetWithTime="leftletMap.geogWithTimeData" :isplay="leftletMap.play" :replay="leftletMap.replay" :visway="leftletMap.visway" v-if="leftletMap.flag"></LeafletMap>
+                <Heatmap :dataset="heatmap.timeCountData" v-if="heatmap.flag" v-show="heatmap.show"></Heatmap>
+              </div>
+            </el-main>
+            <el-main v-else-if="module === '2'">
+              <div class="main-content">
+                <TagCloud :defaultData="tagCloud.wordcount" v-if="tagCloud.flag"></TagCloud>
+              </div>
             </el-main>
         </el-container>
   </div>
@@ -60,28 +84,41 @@
 // import HelloWorld from '@/components/HelloWorld.vue'
 import LeafletMap from '@/components/LeafletMap'
 import Heatmap from '@/components/Heatmap'
+import TagCloud from '@/components/TagCloud'
+
 import axios from 'axios'
 export default {
   name: 'home',
   data() {
     return {
-      allGeogWithDateData: null,
-      allGeogWithTimeData: null,
-      geogWithDateData: null,
-      geogWithTimeData: null,
-      flag: false,
-      timeCountData: null,
-      flag2: false,
-      curdate: '2017-04-01',
-      showHeatmap: false,
-      play: false,
-      replay: false,
-      radio: '0',
+      leftletMap: {
+        allGeogWithDateData: null,
+        allGeogWithTimeData: null,
+        geogWithDateData: null,
+        geogWithTimeData: null,
+        flag: false,
+        visway: '0',
+        curdate: '2017-04-01',
+        play: false,
+        replay: false,
+      },
+      heatmap: {
+        timeCountData: null,
+        flag: false,
+        show: false,
+      },
+      tagCloud: {
+        wordcount: null,
+        flag: false,
+      },
+      module: '1',
+      
     }
   },
   components: {
     LeafletMap,
-    Heatmap
+    Heatmap,
+    TagCloud
   },
   created: function() {
     this.$root.eventHub.$on('re-pause', this.rePause)
@@ -90,39 +127,39 @@ export default {
     this.$nextTick(() => {
       axios.get('/static/data/geog.txt')
         .then((response) => {
-          this.allGeogWithDateData = response.data.split('\n');
-          console.log('original, date:' + this.allGeogWithDateData.length)
-          this.geogWithDateData = this.allGeogWithDateData.filter(d => d.startsWith(this.curdate))
-          this.flag = true
+          this.leftletMap.allGeogWithDateData = response.data.split('\n');
+          console.log('original, date:' + this.leftletMap.allGeogWithDateData.length)
+          this.leftletMap.geogWithDateData = this.leftletMap.allGeogWithDateData.filter(d => d.startsWith(this.leftletMap.curdate))
+          this.leftletMap.flag = true
         })
         .catch((error) => {
-          console.log(error);
+          console.error(error);
         });
       axios.get('/static/data/geogTime.txt')
           .then((response) => {
-            this.allGeogWithTimeData = response.data.split('\n');
-            console.log('original, time:' + this.allGeogWithTimeData.length)
-            this.geogWithTimeData = this.allGeogWithTimeData.filter(d => d.startsWith(this.curdate))
-            console.log('geogWithTimeData:' + this.geogWithTimeData.length);
+            this.leftletMap.allGeogWithTimeData = response.data.split('\n');
+            console.log('original, time:' + this.leftletMap.allGeogWithTimeData.length)
+            this.leftletMap.geogWithTimeData = this.leftletMap.allGeogWithTimeData.filter(d => d.startsWith(this.leftletMap.curdate))
+            console.log('geogWithTimeData:' + this.leftletMap.geogWithTimeData.length);
           })
           .catch((error) => {
-            console.log(error);
+            console.error(error);
           });
       axios.get('/static/data/timecount.txt')
         .then((response) => {
           let alldata = response.data.split('\n');
-          this.timeCountData = []
+          this.heatmap.timeCountData = []
           alldata.forEach(d => {
             if(d !== '') {
               let arr = d.split('\t');
               let arr2 = arr[0].split(',');
-              this.timeCountData.push({'date': arr2[0], 'time': parseInt(arr2[1]), 'count': parseInt(arr[1])});
+              this.heatmap.timeCountData.push({'date': arr2[0], 'time': parseInt(arr2[1]), 'count': parseInt(arr[1])});
             }
           })
-          this.flag2 = true;
+          this.heatmap.flag = true;
         })
         .catch((error) => {
-          console.log(error);
+          console.error(error);
         })
     })
 
@@ -144,14 +181,54 @@ export default {
     }
   },
   methods: {
-    rePause() {
+    handleOpen(key, keyPath) {
+      console.log(key, keyPath);
+      this.module = keyPath[0];
       
+    },
+    handleClose(key, keyPath) {
+      console.log(key, keyPath);
+    },
+    handleSelect(key, keyPath) {
+      console.log(key, keyPath);
+      this.module = keyPath[0];
+      switch (key) {
+        case '2':
+          if(this.tagCloud.flag === false) {
+            axios.get('/static/data/wordcount.txt')
+              .then((response) => {
+                let alldata = response.data.split('\n');
+                this.tagCloud.wordcount = [];
+                alldata.forEach(d => {
+                  if(d !== '') {
+                    let arr = d.split('\t');
+                    this.tagCloud.wordcount.push({'word': arr[0], 'count': parseInt(arr[1])});
+                  }
+                })
+                console.log('wordcount:' + this.tagCloud.wordcount.length);
+                this.tagCloud.flag = true;
+              })
+              .catch((error) => {
+                console.error(error);
+              })
+          }
+          break;
+      
+        default:
+          break;
+      }
     }
   }
 }
 </script>
 <style scoped>
-.home, .el-container {
+.home, .el-container, .el-menu {
+  height: 100%;
+}
+.el-date-editor.el-input, .el-date-editor.el-input__inner {
+  width: 150px;
+}
+.main-content {
   height: 100%;
 }
 </style>

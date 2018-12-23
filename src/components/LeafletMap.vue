@@ -8,7 +8,7 @@ import L from 'leaflet';
 // import icon from 'leaflet/dist/images/marker-icon.png';
 // import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 export default {
-   props: ['dataset', 'datasetWithTime', 'isplay', 'replay', 'visway'],
+   props: ['defaultData', 'datasetWithTime', 'isplay', 'replay', 'visway'],
    data() {
       return {
          map: null,
@@ -32,12 +32,12 @@ export default {
          // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
          //    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
          // }).addTo(mymap);
-         console.log(this.dataset.length)
+         console.log('该天数据量大小：' + this.defaultData.length)
          this.initMap();
          this.addMapLayer();
          this.addGroupLayer();
          this.clearMarkers();
-         this.addMarkers(this.dataset);
+         this.addMarkers(this.defaultData);
       })
    },
    methods: {
@@ -169,7 +169,7 @@ export default {
          // this.clearMarkers();
          // this.addMarkersDirect(this.markers);
          let startIndex = 0;
-         if(this.markers.length === this.dataset.length) {
+         if(this.markers.length === this.defaultData.length) {
             // 第一次Play
             this.clearMarkers();
             this.addMarkersWithTimeline(this.datasetWithTime, startIndex);
@@ -187,19 +187,6 @@ export default {
          }
       },
       pause(way) {
-         // console.log(this.addInterval, this.deleteInterval);
-         // if(way === '1') {
-         //    if(this.deleteInterval) {
-         //       clearInterval(this.deleteInterval);
-         //    } else {
-         //       alert("请稍后再试...");
-         //       this.$root.eventHub.$emit('re-pause', '');
-         //       return;
-         //    }
-         // }
-         // clearInterval(this.addInterval);
-         // this.addInterval = null;
-         // this.deleteInterval = null;
          this.clearIntervals();
          
       },
@@ -255,7 +242,7 @@ export default {
       },
       visway: function(newV, oldV) {
          this.clearMarkers();
-         this.addMarkers(this.dataset);
+         this.addMarkers(this.defaultData);
          this.clearIntervals();
       },
       deleteIntervals: function(newV, oldV) {

@@ -14,7 +14,7 @@ export default {
                 height: '100%',
                 padding: {top: 30, bottom: 30, left: 30, right: 30},
                 svg: null,
-                fontsize: [10, 50],
+                fontsize: [10, 100],
                 size: [900, 600],
                 // domain: [0, 800]
             }
@@ -30,7 +30,7 @@ export default {
     methods: {
         dataPreprocessing() {
             let data = this.defaultData.sort((a, b) => b.count - a.count)
-            data = data.slice(0, 150)
+            data = data.slice(0, 200)
             let extent = d3.extent(data, d => d.count)
             console.log(extent)
             let scale = this.scale(this.tagCloud.fontsize, extent);
@@ -48,7 +48,7 @@ export default {
             return d3.scaleOrdinal(d3.schemeCategory10);
         },
         scale(range, domain) {
-            return d3.scaleSqrt()
+            return d3.scaleLinear()
                 .range(range)
                 .domain(domain);
         },

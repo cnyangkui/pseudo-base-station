@@ -14,7 +14,7 @@
                     <el-menu-item index="1-1">
                         <!-- <span class="demonstration"></span> -->
                         <el-date-picker
-                          v-model="leftletMap.curdate"
+                          v-model="curdate"
                           type="date"
                           placeholder="选择日期"
                           format="yyyy-MM-dd"
@@ -42,6 +42,15 @@
                     <el-menu-item index="1-4">
                       <el-button type="primary" size="small" plain @click="leftletMap.play=!leftletMap.play">{{leftletMap.play===true?'Pause':'Play'}}</el-button>
                       <el-button type="primary" size="small" plain @click="leftletMap.replay=!leftletMap.replay;leftletMap.play=true;">Replay</el-button>
+                    </el-menu-item>
+                    <el-menu-item index="1-5">
+                      <div class="block">
+                        <span class="demonstration">timeline</span>
+                        <el-slider v-model="persent" class="slider" :min="0" :max="100" :step="0.01" :format-tooltip="formatTooltip" @change="changeTimeline"></el-slider>
+                      </div>
+                    </el-menu-item>
+                    <el-menu-item index="1-6">
+                      <span class="demonstration">current：{{leftletMap.curtime}}</span>
                     </el-menu-item>
                   <!-- </el-menu-item-group> -->
                 </el-submenu>
@@ -91,6 +100,8 @@ export default {
   name: 'home',
   data() {
     return {
+      curdate: '2017-04-01',
+      persent: 0,
       leftletMap: {
         allGeogWithDateData: null,
         allGeogWithTimeData: null,
@@ -98,9 +109,9 @@ export default {
         geogWithTimeData: null,
         flag: false,
         visway: '0',
-        curdate: '2017-04-01',
         play: false,
         replay: false,
+        curtime: null,
       },
       heatmap: {
         timeCountData: null,
@@ -121,7 +132,8 @@ export default {
     TagCloud
   },
   created: function() {
-    this.$root.eventHub.$on('re-pause', this.rePause)
+    this.$root.eventHub.$on('timeline-changes', this.timelineChanges);
+    this.$root.eventHub.$on('curtime-changes', this.curtimeChanges);
   },
   mounted: function() {
     this.$nextTick(() => {
@@ -129,7 +141,7 @@ export default {
         .then((response) => {
           this.leftletMap.allGeogWithDateData = response.data.split('\n');
           console.log('original, date:' + this.leftletMap.allGeogWithDateData.length)
-          this.leftletMap.geogWithDateData = this.leftletMap.allGeogWithDateData.filter(d => d.startsWith(this.leftletMap.curdate))
+          this.leftletMap.geogWithDateData = this.leftletMap.allGeogWithDateData.filter(d => d.startsWith(this.curdate))
           this.leftletMap.flag = true
         })
         .catch((error) => {
@@ -139,8 +151,9 @@ export default {
           .then((response) => {
             this.leftletMap.allGeogWithTimeData = response.data.split('\n');
             console.log('original, time:' + this.leftletMap.allGeogWithTimeData.length)
-            this.leftletMap.geogWithTimeData = this.leftletMap.allGeogWithTimeData.filter(d => d.startsWith(this.leftletMap.curdate))
+            this.leftletMap.geogWithTimeData = this.leftletMap.allGeogWithTimeData.filter(d => d.startsWith(this.curdate))
             console.log('geogWithTimeData:' + this.leftletMap.geogWithTimeData.length);
+            this.leftletMap.curtime = this.leftletMap.geogWithTimeData[0].split('\t')[0] || '';
           })
           .catch((error) => {
             console.error(error);
@@ -165,7 +178,8 @@ export default {
 
   },
   beforeDestroy: function () {
-    this.$root.eventHub.$off('re-pause', this.rePause)
+    this.$root.eventHub.$off('timeline-changes', this.timelineChanges)
+    this.$root.eventHub.$off('curtime-changes', this.curtimeChanges)
   },
   computed: {
     
@@ -177,17 +191,29 @@ export default {
       let month = newV.getMonth() + 1;
       let day = newV.getDate();
       let date = year + '-' + (month>9?month:'0'+month) + '-' + (day>9?day:'0'+day);
-      this.geogWithDateData = this.allGeogWithDateData.filter(d => d.startsWith(date));
+      this.leftletMap.geogWithDateData = this.leftletMap.allGeogWithDateData.filter(d => d.startsWith(date));
     }
   },
   methods: {
+    changeTimeline(val) {
+      this.persent = val;
+      this.$root.eventHub.$emit('change-timeline', {'persent': this.persent})
+    },
+    curtimeChanges(val) {
+      this.leftletMap.curtime = val.curtime;
+    },
+    timelineChanges(val) {
+      // console.log('timelinechanges:' + typeof(val.persent) + ',' + val.curtime)
+      this.persent = val.persent;
+      // this.persent = val;
+    },
     handleOpen(key, keyPath) {
-      console.log(key, keyPath);
+      // console.log(key, keyPath);
       this.module = keyPath[0];
       
     },
     handleClose(key, keyPath) {
-      console.log(key, keyPath);
+      // console.log(key, keyPath);
     },
     handleSelect(key, keyPath) {
       console.log(key, keyPath);
@@ -217,6 +243,9 @@ export default {
         default:
           break;
       }
+    },
+    formatTooltip(val) {
+      return val + '%';
     }
   }
 }
@@ -230,6 +259,15 @@ export default {
 }
 .main-content {
   height: 100%;
+}
+.block {
+  display: 'block';
+}
+.slider {
+  width: 65%;
+  float: right;
+  margin-top: 6px;
+  margin-right: 0px;
 }
 </style>
 

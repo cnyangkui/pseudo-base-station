@@ -8,7 +8,7 @@ import L from 'leaflet';
 // import icon from 'leaflet/dist/images/marker-icon.png';
 // import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 export default {
-   props: ['defaultData', 'datasetWithTime', 'isplay', 'replay', 'visway'],
+   props: ['defaultData', 'datasetWithTime', 'isplay', 'replay', 'visway', 'persent'],
    data() {
       return {
          map: null,
@@ -24,7 +24,17 @@ export default {
          },
          addIntervals: [],
          deleteIntervals: [],
+         myPersent: 0,
+         status: 0, //0:第一次播放, 1:正常播放, 2：拖拽时间轴后播放
       }
+   },
+   created: function () {
+      this.$root.eventHub.$on('change-timeline', this.changeTimeline)
+   },
+   // 最好在组件销毁前
+   // 清除事件监听
+   beforeDestroy: function () {
+      this.$root.eventHub.$off('change-timeline', this.changeTimeline)
    },
    mounted() {
       this.$nextTick(() => {
@@ -37,7 +47,7 @@ export default {
          this.addMapLayer();
          this.addGroupLayer();
          this.clearMarkers();
-         this.addMarkers(this.defaultData);
+         this.addMapLayersToLayer(this.defaultData);
       })
    },
    methods: {
@@ -64,7 +74,32 @@ export default {
          this.groupLayer = new L.LayerGroup();
          this.map.addLayer(this.groupLayer);
       },
+      // 根据原始数据，创建marker添加到新数组中
       addMarkers(dataset) {
+         let markers = [];
+         dataset.forEach(d => {
+            let arr = d.split('\t');
+            let date = arr[0];
+            let longitude = parseFloat(arr[1].split(',')[0]);
+            let latitude = parseFloat(arr[1].split(',')[1]);
+            let marker = L.circle([latitude, longitude], {
+               color: 'blue',
+               opacity: 0.05,
+               radius: 50
+            });
+            markers.push(marker);
+            // this.groupLayer.addLayer(marker); 
+         })
+         return markers;
+      },
+      // 将marker添加到layer
+      addMarkersDirectToLayer(markers) {
+         markers.forEach(d => {
+            this.groupLayer.addLayer(d);
+         })
+      },
+      // 直接根据原始数据创建marker，添加到markers中，再添加入layer中
+      addMapLayersToLayer(dataset) {
          dataset.forEach(d => {
             let arr = d.split('\t');
             let date = arr[0];
@@ -85,11 +120,6 @@ export default {
             });
             this.markers.push(marker);
             this.groupLayer.addLayer(marker); 
-         })
-      },
-      addMarkersDirect(markers) {
-         markers.forEach(d => {
-            this.groupLayer.addLayer(d);
          })
       },
       clearMarkers() {
@@ -123,7 +153,7 @@ export default {
             this.markers = markers;
             this.groupLayer = groupLayer;
             startIndex = startIndex + 1;
-         }, 0.1);
+         }, 0.01);
          this.addIntervals.push(addInterval);
       },
       deleteMarkersWithTimeline(dataset, startIndex) {
@@ -131,7 +161,6 @@ export default {
          let groupLayer = this.groupLayer;
          let markers = this.markers;
          let deletedMarkers = this.deletedMarkers;
-
          let deleteInterval = setInterval(function() {
             if(startIndex === size) {
                clearInterval(deleteInterval);
@@ -145,9 +174,9 @@ export default {
                this.groupLayer = groupLayer;
                startIndex = startIndex + 1;
             }
-         }, 0.15);
+         }, 0.015);
          this.deleteIntervals.push(deleteInterval);
-         console.log(deleteInterval);
+         // console.log(deleteInterval);
       },
       sleep(n) {
          let start = new Date().getTime();
@@ -159,6 +188,7 @@ export default {
             }
          }
       },
+      // 播放
       play(way) {
          let flag = true;
          while(flag) {
@@ -166,32 +196,44 @@ export default {
                flag = false;
             }
          }
-         // this.clearMarkers();
-         // this.addMarkersDirect(this.markers);
          let startIndex = 0;
-         if(this.markers.length === this.defaultData.length) {
-            // 第一次Play
+         if(this.status === 0) { //第一次播放 this.markers.length === this.defaultData.length
+            // 第一次Play，清空原始所有marker，开始播放
+            this.status = 1;
             this.clearMarkers();
             this.addMarkersWithTimeline(this.datasetWithTime, startIndex);
             if(way === '1') {
-               console.log('addMarkers, deletedMarkers:' + startIndex + ',' + this.deletedMarkers.length);
-               setTimeout(this.deleteMarkersWithTimeline, 5000, this.datasetWithTime, this.deletedMarkers.length);
+               // console.log('addMarkers, deletedMarkers:' + startIndex + ',' + this.deletedMarkers.length);
+               // 一段时间后开始删除点
+               setTimeout(this.deleteMarkersWithTimeline, 10000, this.datasetWithTime, this.deletedMarkers.length);
             }
-         } else {
+         } else if(this.status === 1) { // 正常播放
+            // 正常播放，不需要清除点, 立即添加或删除
             startIndex = this.markers.length;
             this.addMarkersWithTimeline(this.datasetWithTime, startIndex);
             if(way === '1') {
                console.log('addMarkers, deletedMarkers:' + startIndex + ',' + this.deletedMarkers.length);
                this.deleteMarkersWithTimeline(this.datasetWithTime, this.deletedMarkers.length);
             }
+         } else if(this.status === 2) { //拖动timeline
+            // 拖动timeline, 如果是way2, 5s后开始删除点
+            this.status = 1;
+            startIndex = this.markers.length;
+            this.addMarkersWithTimeline(this.datasetWithTime, startIndex);
+            if(way === '1') {
+               // console.log('addMarkers, deletedMarkers:' + startIndex + ',' + this.deletedMarkers.length);
+               setTimeout(this.deleteMarkersWithTimeline, 10000, this.datasetWithTime, this.deletedMarkers.length);
+            }
          }
       },
+      // 暂停
       pause(way) {
+         // 清空所有interval
          this.clearIntervals();
-         
       },
+      // 重播
       rePlay(way) {
-         console.log('replay。。。。。。')
+         // 清空所有点和interval，开始播放
          this.clearMarkers();
          this.clearIntervals();
          let flag = true;
@@ -202,10 +244,10 @@ export default {
          }
          this.addMarkersWithTimeline(this.datasetWithTime, 0);
          if(way === '1') {
-            console.log('start delete markers...');
             setTimeout(this.deleteMarkersWithTimeline, 5000, this.datasetWithTime, 0);
          }
       },
+      // 清除所有interval
       clearIntervals() {
          console.log('interval:' + this.addIntervals + '|' + this.deleteIntervals);
          if(this.addIntervals) {
@@ -220,13 +262,31 @@ export default {
          }
          this.addIntervals = [];
          this.deleteIntervals = [];
+      },
+      // 拖拽时间轴
+      changeTimeline(val) {
+         this.pause(this.visway); //暂停
+         this.clearMarkers();
+         let startIndex = Math.floor(parseFloat(val.persent/100) * this.datasetWithTime.length);
+         console.log('changeTimeline: ' + startIndex + ',' + parseFloat(val.persent/100));
+         if(this.visway === '0') {
+            this.addMapLayersToLayer(this.datasetWithTime.slice(0, startIndex));
+            // this.myPersent = val.persent;
+         } else if(this.visway === '1') {
+            this.markers = this.addMarkers(this.datasetWithTime.slice(0, startIndex));
+            this.deletedMarkers = this.addMarkers(this.datasetWithTime.slice(0, startIndex));
+         }
+         this.status = 2; // 置于推拽状态
+         if(this.isplay) {
+            this.play(this.visway); //播放
+         }
       }
    },
    watch: {
-      dataset: function(newV, oldV) {
+      defaultData: function(newV, oldV) {
          console.log(newV.length);
          this.clearMarkers();
-         this.addMarkers(newV);
+         this.addMapLayersToLayer(newV);
       },
       isplay: function(newV, oldV) {
          console.log('isplay:' + newV)
@@ -242,8 +302,9 @@ export default {
       },
       visway: function(newV, oldV) {
          this.clearMarkers();
-         this.addMarkers(this.defaultData);
+         this.addMapLayersToLayer(this.defaultData);
          this.clearIntervals();
+         this.status = 0;
       },
       deleteIntervals: function(newV, oldV) {
          if(this.isplay === false && newV.length !==0) {
@@ -257,10 +318,28 @@ export default {
                }
             })
          } 
+      },
+      // 百分比变化，更新时间轴值
+      myPersent: function(newV, oldV) {
+         console.log('mypresent:', newV);
+         this.$root.eventHub.$emit('timeline-changes', {'persent': parseFloat(newV)});
+      },
+      // markers变化，更新curtime
+      markers: function(newV, oldV) {
+         // 第一次播放，使时间轴值为0
+         if(this.status === 0) {
+            this.myPersent = 0;
+            this.$root.eventHub.$emit('curtime-changes', {'curtime': this.datasetWithTime[0].split('\t')[0] || ''});
+         } else { //newV.length !== this.datasetWithTime.length
+            // 计算百分比，更新时间轴值和curtime
+            let result = newV.length / this.datasetWithTime.length * 100;
+            this.myPersent = result.toFixed(2);
+            this.$root.eventHub.$emit('curtime-changes', {'curtime': this.datasetWithTime[newV.length].split('\t')[0] || ''});
+         }
       }
    },
    computed: {
-      
+     
    }
 }
 </script>

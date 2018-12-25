@@ -329,7 +329,7 @@ export default {
          // 第一次播放，使时间轴值为0
          if(this.status === 0) {
             this.myPersent = 0;
-            this.$root.eventHub.$emit('curtime-changes', {'curtime': this.datasetWithTime[0].split('\t')[0] || ''});
+            // this.$root.eventHub.$emit('curtime-changes', {'curtime': this.datasetWithTime[0].split('\t')[0] || ''});
          } else { //newV.length !== this.datasetWithTime.length
             // 计算百分比，更新时间轴值和curtime
             let result = newV.length / this.datasetWithTime.length * 100;

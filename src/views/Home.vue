@@ -4,9 +4,9 @@
        <el-container>
             <el-aside>
               <el-menu @open="handleOpen" @close="handleClose" @select="handleSelect" default-active="1-1" :unique-opened="true">
-                <el-submenu index="1" collapse="isCollapse1">
+                <el-submenu index="1">
                   <template slot="title">
-                    <i class="el-icon-location"></i>
+                    <i class=""></i>
                     <span>Map</span>
                   </template>
                   <!-- <el-menu-item-group> -->
@@ -55,21 +55,25 @@
                   <!-- </el-menu-item-group> -->
                 </el-submenu>
                 <el-menu-item index="2">
-                  <i class="el-icon-menu"></i>
+                  <i class=""></i>
                   <span slot="title">TagCloud</span>
                 </el-menu-item>
                 <el-submenu index="3">
                   <template slot="title">
-                    <i class="el-icon-location"></i>
-                    <span>xxx</span>
+                    <i class=""></i>
+                    <span>Track</span>
                   </template>
-                  <el-menu-item-group title="分组2">
-                    <el-menu-item index="2-1">选项3</el-menu-item>
-                  </el-menu-item-group>
-                  <el-submenu index="2-2">
-                    <span slot="title">选项4</span>
-                    <el-menu-item index="2-2-1">选项1</el-menu-item>
-                  </el-submenu>
+                  <el-menu-item index="3-1">
+                    <el-date-picker
+                      v-model="curdate2"
+                      type="date"
+                      placeholder="选择日期"
+                      format="yyyy-MM-dd"
+                      size="small"
+                      :editable="false"
+                      :clearable="false">
+                    </el-date-picker>
+                  </el-menu-item>
                 </el-submenu>
               </el-menu>
             </el-aside>
@@ -84,6 +88,16 @@
                 <TagCloud :defaultData="tagCloud.wordcount" v-if="tagCloud.flag"></TagCloud>
               </div>
             </el-main>
+            <el-main v-else-if="module === '3'">
+              <el-row :gutter="5" class="main-content">
+                <el-col :span="18" class="main-content">
+                  <TrackInMap :defaultData="trackInMap.trackData"></TrackInMap>
+                </el-col>
+                <el-col :span="6" class="main-content">
+                  <BubbleChart :defaultData="bubbleChart.bubbleData" :md5text="bubbleChart.md5text" v-if="bubbleChart.flag && trackInMap.flag"></BubbleChart>
+                </el-col>
+              </el-row>
+            </el-main>
         </el-container>
   </div>
 </template>
@@ -94,13 +108,17 @@
 import LeafletMap from '@/components/LeafletMap'
 import Heatmap from '@/components/Heatmap'
 import TagCloud from '@/components/TagCloud'
+import TrackInMap from '@/components/TrackInMap'
+import BubbleChart from '@/components/BubbleChart'
 
 import axios from 'axios'
+import { all } from 'q';
 export default {
   name: 'home',
   data() {
     return {
       curdate: '2017-04-01',
+      curdate2: '2017-04-01',
       persent: 0,
       leftletMap: {
         allGeogWithDateData: null,
@@ -122,6 +140,17 @@ export default {
         wordcount: null,
         flag: false,
       },
+      trackInMap: {
+        alldata: null,
+        trackData: null,
+        flag: false,
+      },
+      bubbleChart: {
+        alldata: null,
+        bubbleData: null,
+        flag: false,
+        md5text: null,
+      },
       module: '1',
       
     }
@@ -129,11 +158,14 @@ export default {
   components: {
     LeafletMap,
     Heatmap,
-    TagCloud
+    TagCloud,
+    TrackInMap,
+    BubbleChart
   },
   created: function() {
     this.$root.eventHub.$on('timeline-changes', this.timelineChanges);
     this.$root.eventHub.$on('curtime-changes', this.curtimeChanges);
+    this.$root.eventHub.$on('find-point-by-md5', this.updateBubbleData);
   },
   mounted: function() {
     this.$nextTick(() => {
@@ -178,8 +210,9 @@ export default {
 
   },
   beforeDestroy: function () {
-    this.$root.eventHub.$off('timeline-changes', this.timelineChanges)
-    this.$root.eventHub.$off('curtime-changes', this.curtimeChanges)
+    this.$root.eventHub.$off('timeline-changes', this.timelineChanges);
+    this.$root.eventHub.$off('curtime-changes', this.curtimeChanges);
+    this.$root.eventHub.$off('find-point-by-md5', this.updateBubbleData);
   },
   computed: {
     
@@ -187,38 +220,68 @@ export default {
   watch: {
     curdate: function(newV, oldV) {
       // this.flag = false;
-      let year = newV.getFullYear();
-      let month = newV.getMonth() + 1;
-      let day = newV.getDate();
-      let date = year + '-' + (month>9?month:'0'+month) + '-' + (day>9?day:'0'+day);
+      let date = this.formatTime(newV);
       this.leftletMap.geogWithDateData = this.leftletMap.allGeogWithDateData.filter(d => d.startsWith(date));
-    }
-  },
-  methods: {
-    changeTimeline(val) {
-      this.persent = val;
-      this.$root.eventHub.$emit('change-timeline', {'persent': this.persent})
     },
-    curtimeChanges(val) {
-      this.leftletMap.curtime = val.curtime;
+    curdate2: function(newV, oldV) {
+      this.trackInMap.flag = false;
+      this.bubbleChart.flag = false;
+      let date = '';
+      if(typeof(newV) == 'object') {
+        date = this.formatTime(newV)
+      } else {
+        date = newV;
+      }
+      let filename = date.replace(/-/g, '') + '.csv';
+      axios.get('/static/data/originaldata/' + filename)
+        .then((response) => {
+          let alldata = response.data.split('\n');
+          this.trackInMap.alldata = [];
+          this.bubbleChart.md5text = new Set();
+          alldata.forEach(d => {
+            if(d !== '') {
+              let dims = d.split(',');
+              if(dims.length === 7) {
+                let timestamp = dims[3];
+                let tmpdate = this.formatTime(new Date(parseInt(timestamp)));
+                if(tmpdate === date) {
+                  this.trackInMap.alldata.push({'md5': dims[0], 'phone': dims[2], 'lng': dims[5], 'lat': dims[6]});
+                  this.bubbleChart.md5text.add(dims[0] + ',' + dims[1]);
+                }
+              }
+            }
+          })
+          this.trackInMap.trackData = [];
+          this.trackInMap.trackData = this.trackInMap.alldata.filter(d => d.md5 === '');
+          this.trackInMap.flag = true;
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+      axios.get('/static/data/md5datecount.txt')
+        .then((response) => {
+          let alldata = response.data.split('\n');
+          this.bubbleChart.alldata = [];
+          alldata.forEach(d => {
+            if(d !== '') {
+              let arr = d.split('\t');
+              let arr2 = arr[0].split(',');
+              let count = arr[1];
+              let date = arr2[0];
+              let md5 = arr2[1];
+              this.bubbleChart.alldata.push({'date': date, 'md5': md5, 'count': parseInt(count)});
+            }
+          })
+          this.bubbleChart.bubbleData = this.bubbleChart.alldata.filter(d => d.date === date)
+          console.log('bubbleChart:' + this.bubbleChart.bubbleData.length);
+          this.bubbleChart.flag = true;
+        })
+        .catch((error) => {
+          console.error(error);
+        })
     },
-    timelineChanges(val) {
-      // console.log('timelinechanges:' + typeof(val.persent) + ',' + val.curtime)
-      this.persent = val.persent;
-      // this.persent = val;
-    },
-    handleOpen(key, keyPath) {
-      // console.log(key, keyPath);
-      this.module = keyPath[0];
-      
-    },
-    handleClose(key, keyPath) {
-      // console.log(key, keyPath);
-    },
-    handleSelect(key, keyPath) {
-      console.log(key, keyPath);
-      this.module = keyPath[0];
-      switch (key) {
+    module: function(newV, oldV) {
+      switch (newV) {
         case '2':
           if(this.tagCloud.flag === false) {
             axios.get('/static/data/wordcount.txt')
@@ -239,9 +302,126 @@ export default {
               })
           }
           break;
+        case '3':
+          if(this.trackInMap.flag === false) {
+            let date = '';
+            if(typeof(this.curdate2) == 'object') {
+              date = this.formatTime(this.curdate)
+            } else {
+              date = this.curdate2;
+            }
+            let filename = date.replace(/-/g, '') + '.csv';
+            console.log(filename)
+            axios.get('/static/data/originaldata/' + filename)
+              .then((response) => {
+                let alldata = response.data.split('\n');
+                this.trackInMap.alldata = [];
+                this.bubbleChart.md5text = new Set();
+                alldata.forEach(d => {
+                  if(d !== '') {
+                    let dims = d.split(',');
+                    if(dims.length === 7) {
+                      let timestamp = dims[3];
+                      let tmpdate = this.formatTime(new Date(parseInt(timestamp)));
+                      if(tmpdate === date) {
+                        this.trackInMap.alldata.push({'md5': dims[0], 'phone': dims[2], 'lng': dims[5], 'lat': dims[6]});
+                        this.bubbleChart.md5text.add(dims[0] + ',' + dims[1]);
+                      }
+                    }
+                  }
+                })
+                this.trackInMap.trackData = [];
+                this.trackInMap.trackData = this.trackInMap.alldata.filter(d => d.md5 === '');
+                this.trackInMap.flag = true;
+              })
+              .catch((error) => {
+                console.error(error);
+              })
+          }
+          if(this.bubbleChart.flag === false) {
+            let date = '';
+            if(typeof(this.curdate2) == 'object') {
+              date = this.formatTime(this.curdate)
+            } else {
+              date = this.curdate2;
+            }
+            axios.get('/static/data/md5datecount.txt')
+              .then((response) => {
+                let alldata = response.data.split('\n');
+                this.bubbleChart.alldata = [];
+                alldata.forEach(d => {
+                  if(d !== '') {
+                    let arr = d.split('\t');
+                    let arr2 = arr[0].split(',');
+                    let count = arr[1];
+                    let date = arr2[0];
+                    let md5 = arr2[1];
+                    this.bubbleChart.alldata.push({'date': date, 'md5': md5, 'count': parseInt(count)});
+                  }
+                })
+                this.bubbleChart.bubbleData = this.bubbleChart.alldata.filter(d => d.date === date)
+                console.log('bubbleChart:' + this.bubbleChart.bubbleData.length);
+                this.bubbleChart.flag = true;
+              })
+              .catch((error) => {
+                console.error(error);
+              })
+          }
+          break;
       
         default:
           break;
+      }
+    }
+  },
+  methods: {
+    formatTime(date) {
+      let year = date.getFullYear();
+      let month = date.getMonth() + 1;
+      let day = date.getDate();
+      return year + '-' + (month>9?month:'0'+month) + '-' + (day>9?day:'0'+day);
+    },
+    updateBubbleData(val) {
+      this.trackInMap.trackData = [];
+      if(this.trackInMap.flag) {
+        let curdate = this.curdate2;
+        if(typeof(curdate) === 'object') {
+          curdate = this.formatTime(curdate);
+        }
+        this.trackInMap.trackData = this.trackInMap.alldata.filter(d => d.md5 === val.md5);
+      }
+    },
+    changeTimeline(val) {
+      this.persent = val;
+      this.$root.eventHub.$emit('change-timeline', {'persent': this.persent})
+    },
+    curtimeChanges(val) {
+      this.leftletMap.curtime = val.curtime;
+    },
+    timelineChanges(val) {
+      // console.log('timelinechanges:' + typeof(val.persent) + ',' + val.curtime)
+      this.persent = val.persent;
+      // this.persent = val;
+    },
+    handleOpen(key, keyPath) {
+      // console.log(key, keyPath);
+      if(keyPath) {
+        this.module = keyPath[0];
+        console.log(this.module)
+      }
+    },
+    handleClose(key, keyPath) {
+      // console.log(key, keyPath);
+      if(keyPath) {
+        this.module = keyPath[0];
+        console.log(this.module)
+      }
+    },
+    handleSelect(key, keyPath) {
+      // console.log(key, keyPath);
+      if(keyPath) {
+        this.module = keyPath[0];
+        console.log(this.module)
       }
     },
     formatTooltip(val) {

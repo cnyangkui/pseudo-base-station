@@ -100,8 +100,6 @@ export default {
 }
 </script>
 <style scoped>
-#tagcloud {
-    /* background-color: red; */
-}
+
 </style>
 

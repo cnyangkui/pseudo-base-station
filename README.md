@@ -8,12 +8,15 @@
 
 实现了两种动态演化方式：(1)随着时间推进，增加点；(2)随着时间推进，增加新的点，删除旧的点。两种方式都借助setInterval实现。
 
-通过Timeline对时间轴进行控制，更新地理视图。
+通过Timeline对时间轴进行控制，实时更新地理视图。
 
+### 伪基站时空分布规律探索
 ![伪基站时空分布规律探索](https://github.com/cnyangkui/pseudo-base-station/blob/master/public/SpatialAndTemporalDistribution.png)
 
+### 伪基站移动轨迹探索 
 ![伪基站移动轨迹探索](https://github.com/cnyangkui/pseudo-base-station/blob/master/public/MovingTrack.png)
 
+### 项目演示
 ![项目演示](https://github.com/cnyangkui/pseudo-base-station/blob/master/public/ProjectDisplay.gif)
 
 ## Dependencies

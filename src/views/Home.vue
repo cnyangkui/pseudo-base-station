@@ -27,8 +27,8 @@
                       <span style="color:black">Heatmap：  </span>
                       <el-switch
                         v-model="heatmap.show"
-                        active-text="可见"
-                        inactive-text="隐藏">
+                        active-text="visible"
+                        inactive-text="hidden">
                       </el-switch>
                     </el-menu-item>
                     <el-menu-item index="1-3">
@@ -94,7 +94,7 @@
                   <TrackInMap :defaultData="trackInMap.trackData"></TrackInMap>
                 </el-col>
                 <el-col :span="6" class="main-content">
-                  <BubbleChart :defaultData="bubbleChart.bubbleData" :md5text="bubbleChart.md5text" v-if="bubbleChart.flag && trackInMap.flag"></BubbleChart>
+                  <Treemap :defaultData="treemap.treemapData" :md5text="treemap.md5text" v-if="treemap.flag && trackInMap.flag"></Treemap>
                 </el-col>
               </el-row>
             </el-main>
@@ -109,7 +109,7 @@ import LeafletMap from '@/components/LeafletMap'
 import Heatmap from '@/components/Heatmap'
 import TagCloud from '@/components/TagCloud'
 import TrackInMap from '@/components/TrackInMap'
-import BubbleChart from '@/components/BubbleChart'
+import Treemap from '@/components/Treemap'
 
 import axios from 'axios'
 import { all } from 'q';
@@ -145,9 +145,9 @@ export default {
         trackData: null,
         flag: false,
       },
-      bubbleChart: {
+      treemap: {
         alldata: null,
-        bubbleData: null,
+        treemapData: null,
         flag: false,
         md5text: null,
       },
@@ -160,12 +160,12 @@ export default {
     Heatmap,
     TagCloud,
     TrackInMap,
-    BubbleChart
+    Treemap
   },
   created: function() {
     this.$root.eventHub.$on('timeline-changes', this.timelineChanges);
     this.$root.eventHub.$on('curtime-changes', this.curtimeChanges);
-    this.$root.eventHub.$on('find-point-by-md5', this.updateBubbleData);
+    this.$root.eventHub.$on('find-point-by-md5', this.updateTreemapData);
   },
   mounted: function() {
     this.$nextTick(() => {
@@ -212,7 +212,7 @@ export default {
   beforeDestroy: function () {
     this.$root.eventHub.$off('timeline-changes', this.timelineChanges);
     this.$root.eventHub.$off('curtime-changes', this.curtimeChanges);
-    this.$root.eventHub.$off('find-point-by-md5', this.updateBubbleData);
+    this.$root.eventHub.$off('find-point-by-md5', this.updateTreemapData);
   },
   computed: {
     
@@ -222,10 +222,12 @@ export default {
       // this.flag = false;
       let date = this.formatTime(newV);
       this.leftletMap.geogWithDateData = this.leftletMap.allGeogWithDateData.filter(d => d.startsWith(date));
+      this.leftletMap.geogWithTimeData = this.leftletMap.allGeogWithTimeData.filter(d => d.startsWith(date));
+      // this.persent = 0;
     },
     curdate2: function(newV, oldV) {
       this.trackInMap.flag = false;
-      this.bubbleChart.flag = false;
+      this.treemap.flag = false;
       let date = '';
       if(typeof(newV) == 'object') {
         date = this.formatTime(newV)
@@ -237,7 +239,7 @@ export default {
         .then((response) => {
           let alldata = response.data.split('\n');
           this.trackInMap.alldata = [];
-          this.bubbleChart.md5text = new Set();
+          this.treemap.md5text = new Set();
           alldata.forEach(d => {
             if(d !== '') {
               let dims = d.split(',');
@@ -246,7 +248,7 @@ export default {
                 let tmpdate = this.formatTime(new Date(parseInt(timestamp)));
                 if(tmpdate === date) {
                   this.trackInMap.alldata.push({'md5': dims[0], 'phone': dims[2], 'lng': dims[5], 'lat': dims[6]});
-                  this.bubbleChart.md5text.add(dims[0] + ',' + dims[1]);
+                  this.treemap.md5text.add(dims[0] + ',' + dims[1]);
                 }
               }
             }
@@ -261,7 +263,7 @@ export default {
       axios.get('/static/data/md5datecount.txt')
         .then((response) => {
           let alldata = response.data.split('\n');
-          this.bubbleChart.alldata = [];
+          this.treemap.alldata = [];
           alldata.forEach(d => {
             if(d !== '') {
               let arr = d.split('\t');
@@ -269,12 +271,12 @@ export default {
               let count = arr[1];
               let date = arr2[0];
               let md5 = arr2[1];
-              this.bubbleChart.alldata.push({'date': date, 'md5': md5, 'count': parseInt(count)});
+              this.treemap.alldata.push({'date': date, 'md5': md5, 'count': parseInt(count)});
             }
           })
-          this.bubbleChart.bubbleData = this.bubbleChart.alldata.filter(d => d.date === date)
-          console.log('bubbleChart:' + this.bubbleChart.bubbleData.length);
-          this.bubbleChart.flag = true;
+          this.treemap.treemapData = this.treemap.alldata.filter(d => d.date === date)
+          console.log('treemap:' + this.treemap.treemapData.length);
+          this.treemap.flag = true;
         })
         .catch((error) => {
           console.error(error);
@@ -316,7 +318,7 @@ export default {
               .then((response) => {
                 let alldata = response.data.split('\n');
                 this.trackInMap.alldata = [];
-                this.bubbleChart.md5text = new Set();
+                this.treemap.md5text = new Set();
                 alldata.forEach(d => {
                   if(d !== '') {
                     let dims = d.split(',');
@@ -325,7 +327,7 @@ export default {
                       let tmpdate = this.formatTime(new Date(parseInt(timestamp)));
                       if(tmpdate === date) {
                         this.trackInMap.alldata.push({'md5': dims[0], 'phone': dims[2], 'lng': dims[5], 'lat': dims[6]});
-                        this.bubbleChart.md5text.add(dims[0] + ',' + dims[1]);
+                        this.treemap.md5text.add(dims[0] + ',' + dims[1]);
                       }
                     }
                   }
@@ -338,7 +340,7 @@ export default {
                 console.error(error);
               })
           }
-          if(this.bubbleChart.flag === false) {
+          if(this.treemap.flag === false) {
             let date = '';
             if(typeof(this.curdate2) == 'object') {
               date = this.formatTime(this.curdate)
@@ -348,7 +350,7 @@ export default {
             axios.get('/static/data/md5datecount.txt')
               .then((response) => {
                 let alldata = response.data.split('\n');
-                this.bubbleChart.alldata = [];
+                this.treemap.alldata = [];
                 alldata.forEach(d => {
                   if(d !== '') {
                     let arr = d.split('\t');
@@ -356,12 +358,12 @@ export default {
                     let count = arr[1];
                     let date = arr2[0];
                     let md5 = arr2[1];
-                    this.bubbleChart.alldata.push({'date': date, 'md5': md5, 'count': parseInt(count)});
+                    this.treemap.alldata.push({'date': date, 'md5': md5, 'count': parseInt(count)});
                   }
                 })
-                this.bubbleChart.bubbleData = this.bubbleChart.alldata.filter(d => d.date === date)
-                console.log('bubbleChart:' + this.bubbleChart.bubbleData.length);
-                this.bubbleChart.flag = true;
+                this.treemap.treemapData = this.treemap.alldata.filter(d => d.date === date)
+                console.log('treemap:' + this.treemap.treemapData.length);
+                this.treemap.flag = true;
               })
               .catch((error) => {
                 console.error(error);
@@ -381,7 +383,7 @@ export default {
       let day = date.getDate();
       return year + '-' + (month>9?month:'0'+month) + '-' + (day>9?day:'0'+day);
     },
-    updateBubbleData(val) {
+    updateTreemapData(val) {
       this.trackInMap.trackData = [];
       if(this.trackInMap.flag) {
         let curdate = this.curdate2;

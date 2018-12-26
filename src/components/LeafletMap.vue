@@ -284,9 +284,13 @@ export default {
    },
    watch: {
       defaultData: function(newV, oldV) {
-         console.log(newV.length);
+         // console.log(newV.length);
          this.clearMarkers();
          this.addMapLayersToLayer(newV);
+      },
+      datasetWithTime: function(newV, oldV) {
+         // console.log(newV.length)
+         this.status = 0;
       },
       isplay: function(newV, oldV) {
          console.log('isplay:' + newV)
@@ -326,10 +330,14 @@ export default {
       },
       // markers变化，更新curtime
       markers: function(newV, oldV) {
+         console.log('update marsers............')
          // 第一次播放，使时间轴值为0
          if(this.status === 0) {
+            console.log('first play....')
             this.myPersent = 0;
-            // this.$root.eventHub.$emit('curtime-changes', {'curtime': this.datasetWithTime[0].split('\t')[0] || ''});
+            if(this.datasetWithTime) {
+               this.$root.eventHub.$emit('curtime-changes', {'curtime': this.datasetWithTime[0].split('\t')[0] || ''});
+            }
          } else { //newV.length !== this.datasetWithTime.length
             // 计算百分比，更新时间轴值和curtime
             let result = newV.length / this.datasetWithTime.length * 100;

@@ -17,7 +17,7 @@
 ![伪基站移动轨迹探索](https://github.com/cnyangkui/pseudo-base-station/blob/master/public/MovingTrack.png)
 
 ### 项目演示
-![项目演示](https://github.com/cnyangkui/pseudo-base-station/blob/master/public/ProjectDisplay.gif)
+![项目演示](https://github.com/cnyangkui/pseudo-base-station/blob/master/public/project-display.gif)
 
 ## Dependencies
 [vue](https://cn.vuejs.org/v2/guide/)

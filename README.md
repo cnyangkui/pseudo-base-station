@@ -10,12 +10,12 @@
 
 ## 实验详情
 
-![实验背景](public/1.png)
-![数据说明](public/2.png)
-![实验方案](public/3.png)
-![实验细节](public/4.png)
-![实验细节](public/5.png)
-![实验细节](public/6.png)
+![实验背景](public/images/1.png)
+![数据说明](public/images/2.png)
+![实验方案](public/images/3.png)
+![实验细节](public/images/4.png)
+![实验细节](public/images/5.png)
+![实验细节](public/images/6.png)
 
 ---
 
@@ -27,13 +27,13 @@
 通过Timeline对时间轴进行控制，实时更新地理视图。
 
 ### 伪基站时空分布规律探索
-![伪基站时空分布规律探索](public/SpatialAndTemporalDistribution.png)
+![伪基站时空分布规律探索](public/images/SpatialAndTemporalDistribution.png)
 
 ### 伪基站移动轨迹探索 
-![伪基站移动轨迹探索](public/MovingTrack.png)
+![伪基站移动轨迹探索](public/images/MovingTrack.png)
 
 ### 项目演示
-![项目演示](public/project-display.gif)
+![项目演示](public/images/project-display.gif)
 
 ---
 
